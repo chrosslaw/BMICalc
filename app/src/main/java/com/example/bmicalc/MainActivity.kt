@@ -34,16 +34,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 
 
+
+
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Instead of setContentView, use setContent for Compose
         setContent {
-            MaterialTheme{
+            MaterialTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     DisplayRows(modifier = Modifier.padding(innerPadding))
-
                 }
             }
         }
@@ -51,100 +51,173 @@ class MainActivity : AppCompatActivity() {
 }
 
 @Composable
-fun CalcButton(height: Int, weight: Int) {
-    // Use a Box to position the button at the bottom center.
-    Box(
-        modifier = Modifier.padding(top = 50.dp)
+fun InputBox(labelText: String, textState: MutableState<String>, modifier: Modifier = Modifier) {
+    OutlinedTextField(
+        value = textState.value,
+        onValueChange = { textState.value = it },
+        label = { Text(labelText) },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+    )
+}
+
+@Composable
+fun GenderInputBox(labelText: String, textState: MutableState<String>, modifier: Modifier = Modifier) {
+    OutlinedTextField(
+        value = textState.value,
+        onValueChange = { textState.value = it },
+        label = { Text(labelText) },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    )
+}
+
+@Composable
+fun Title() {
+    Text(
+        "BMI Calculator",
+        fontSize = 32.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp),
+        textAlign = TextAlign.Center
+    )
+}
+
+@Composable
+fun InputDisplaySection(
+    weightState: MutableState<String>,
+    heightState: MutableState<String>,
+    genderState: MutableState<String>,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp)
     ) {
-        Button(
-            onClick = { /* Handle the click here */ },
-            modifier = Modifier.padding(20.dp)
-                .fillMaxWidth()
-                .padding(top = 50.dp)
-        ) {
-            Text("Calculate", fontSize = 24.sp, modifier = Modifier.padding(vertical = 8.dp))
-        }
+        Title()
+        InputBox("Enter weight in lbs", weightState)
+        InputBox("Enter height in inches", heightState)
+        GenderInputBox("Enter gender (Male/Female)", genderState)
     }
 }
 
 @Composable
-fun InputBox(labelText: String, textState: MutableState<String>, modifier: Modifier = Modifier) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
+fun ResultSection(resultText: MutableState<String>, resultColor: MutableState<Color>, gender:String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        OutlinedTextField(
-            value = textState.value,
-            onValueChange = { textState.value = it },
-            label = { Text(labelText) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
+        Text( "Gender: " + gender,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(8.dp))
+
+        Text(
+            resultText.value,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = resultColor.value,
+            textAlign = TextAlign.Center
         )
     }
 }
-@Composable
-fun Title() {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 50.dp),
-    ) {
-        Text("BMI Calculator",
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center)
-    }
-}
-
 
 @Composable
-fun InputDisplayRow(weightState: MutableState<String>,heightState: MutableState<String>,modifier: Modifier = Modifier) {
-
-    Column(
+fun CalcButton(
+    weight: Int,
+    height: Int,
+    gender: String,
+    resultText: MutableState<String>,
+    resultColor: MutableState<Color>
+) {
+    Button(
+        onClick = {
+            // Determine the gender (defaulting to MALE if not recognized)
+            val genderEnum = when (gender.lowercase()) {
+                "male" -> Gender.MALE
+                "female" -> Gender.FEMALE
+                else -> Gender.MALE
+            }
+            // Create a Person object and calculate BMI
+            val person = Person(weight, height, genderEnum)
+            val bmi = person.calculateBMI()
+            val category = person.bmiStatus()
+            // Update the result message and color
+            resultText.value = "Your BMI is %.2f. ${category.message}".format(bmi)
+            resultColor.value = category.color
+        },
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp)
+            .padding(16.dp)
     ) {
-        Title()
-        InputBox("Add your height", heightState)
-        InputBox("Add your weight", weightState)
+        Text("Calculate", fontSize = 24.sp)
     }
 }
 
 @Composable
-fun TextDisplayRow(displayText: String, weightState: MutableState<String>,heightState: MutableState<String>, modifier: Modifier = Modifier){
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(top = 60.dp),
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row( modifier = Modifier.fillMaxWidth()){
-            Text(displayText,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center)
-        }
-        Row( modifier = Modifier.fillMaxWidth()) {
-            CalcButton(heightState.value.toIntOrNull() ?: 0, weightState.value.toIntOrNull() ?: 0)
-        }
-    }
-}
-
-@Composable
-fun DisplayRows(modifier: Modifier = Modifier){
+fun DisplayRows(modifier: Modifier = Modifier) {
     val weightState = remember { mutableStateOf("") }
     val heightState = remember { mutableStateOf("") }
+    val genderState = remember { mutableStateOf("") }
+    val resultText = remember { mutableStateOf("Enter your details and tap Calculate") }
+    val resultColor = remember { mutableStateOf(Color.Black) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(top = 60.dp),
+            .padding(top = 16.dp),
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        InputDisplayRow(weightState,heightState)
-        TextDisplayRow("DISPLAY TEXT",weightState,heightState)
+        // Top section with input fields and button
+        Column {
+            InputDisplaySection(weightState, heightState, genderState)
+            CalcButton(
+                weight = weightState.value.toIntOrNull() ?: 0,
+                height = heightState.value.toIntOrNull() ?: 0,
+                gender = genderState.value,
+                resultText = resultText,
+                resultColor = resultColor
+            )
+        }
+        // Bottom section to display the result
+        ResultSection(resultText, resultColor, genderState.value)
     }
 }
 
 
+enum class Gender {
+    MALE, FEMALE
+}
+
+enum class BMIStatus(val message: String, val color: Color) {
+    UNDERWEIGHT("You are underweight", Color.Red),
+    NORMAL("Your weight is normal", Color.Green),
+    OVERWEIGHT("You are overweight", Color.Red)
+}
+
+// Person class that encapsulates the BMI calculation.
+class Person(val weight: Int, val height: Int, val gender: Gender) {
+    // Calculate BMI using lbs and inches: (weight / (height^2)) * 703
+    fun calculateBMI(): Double {
+        if (height == 0) return 0.0
+        return (weight.toDouble() / (height.toDouble() * height.toDouble())) * 703.0
+    }
+
+    // Determine the BMI category based on standard thresholds.
+    fun bmiStatus(): BMIStatus {
+        val bmi = calculateBMI()
+        return when {
+            bmi < 18.5 -> BMIStatus.UNDERWEIGHT
+            bmi < 25.0 -> BMIStatus.NORMAL
+            else -> BMIStatus.OVERWEIGHT
+        }
+    }
+}
